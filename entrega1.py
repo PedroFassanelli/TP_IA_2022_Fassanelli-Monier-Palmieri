@@ -1,4 +1,4 @@
-from simpleai.search import SearchProblem, astar
+from simpleai.search import SearchProblem, astar, breadth_first, depth_first
 from simpleai.search.viewers import WebViewer, BaseViewer
 
 def jugar(paredes, cajas, objetivos, jugador, maximos_movimientos):
@@ -35,40 +35,39 @@ def jugar(paredes, cajas, objetivos, jugador, maximos_movimientos):
             # -Si en la casilla adyacente al jugador hay una caja, el jugador puede empujar la caja a una posicion adyacente que no tenga otra caja. 
             acciones_disponibles = []
             cajas, objetivos, jugador, movimientos = state
-            f_jugador, c_jugador = jugador
-            f_caja, c_caja = cajas
-            
-            for f, c in [(1, 0), (-1, 0), (0, 1), (0, -1)]:
-                jugador_nueva_fila = f_jugador + f
-                jugador_nueva_columna = c_jugador + c
-                jugador_nueva_posicion = (jugador_nueva_fila, jugador_nueva_columna)
-                
-                if jugador_nueva_posicion not in paredes:
-                    acciones_disponibles.append(jugador_nueva_posicion)
+            (f_jugador, c_jugador) = jugador
+
+            if movimientos > 0:
+                for f, c in [(1, 0), (-1, 0), (0, 1), (0, -1)]:
+                    jugador_nueva_fila = f_jugador + f
+                    jugador_nueva_columna = c_jugador + c
+                    jugador_nueva_posicion = (jugador_nueva_fila, jugador_nueva_columna)
                     
-                caja_nueva_fila = f_caja + f
-                caja_nueva_columna = c_caja + c
-                caja_nueva_posicion = (caja_nueva_fila, caja_nueva_columna)
-                
-                if caja_nueva_posicion not in paredes and caja_nueva_posicion not in cajas:
-                    acciones_disponibles.append(caja_nueva_posicion)
-                
-                return acciones_disponibles
+                    if jugador_nueva_posicion not in paredes:
+                        acciones_disponibles.append(jugador_nueva_posicion)
+                        if jugador_nueva_posicion in cajas:
+                            caja_nueva_fila = jugador_nueva_fila + f
+                            caja_nueva_columna = jugador_nueva_columna + c
+                            caja_nueva_posicion = (caja_nueva_fila, caja_nueva_columna)
+                            if caja_nueva_posicion not in paredes and caja_nueva_posicion not in cajas:                       
+                                acciones_disponibles.append(caja_nueva_posicion)
+            return acciones_disponibles
         
         def result(self, state, action):
+            cajas, objetivos, jugador, movimientos = state
+            nueva_pos_jugador, nueva_pos_caja = action 
             pass
-        
         def heuristic(self, state):
             pass
     
     problem = SokobanProblem(estado_inicial)
     # viewer = WebViewer()
     
-    result = astar(problem, graph_search=True)
-    # result = astar(problem, graph_search=True, viewer=WebViewer())
+    #result = astar(problem, graph_search=False)
+    #result = astar(problem, graph_search=True, viewer=WebViewer())
     # result = breadth_first(problem, graph_search=True)
     # result = limited_depth_first(problem, graph_search=True, viewer=viewer, depth_limit=3)
-    # result = depth_first(problem,  graph_search=True)
+    #result = depth_first(problem,  graph_search=True)
     
     secuencia = []
     # Recorrer el resultado agregando a la lista secuencia, las acciones seleccionadas por el algoritmo
@@ -85,7 +84,7 @@ if __name__ == '__main__':
     print('Resolviendo...')
 
     paredes = [(5, 1), (6, 1), (6, 2)]
-    cajas = [(0,3),(2,4)]
+    cajas = [(0,3),(2,4),(3,2)]
     objetivos = [(1,3),(4,5)]
     jugador = (2,2)
     maximos_movimientos = 30
