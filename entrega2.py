@@ -1,10 +1,14 @@
-from simpleai.search import CspProblem, backtrack
+from itertools import combinations
+
+from simpleai.search import (
+    CspProblem,
+    backtrack,
+    HIGHEST_DEGREE_VARIABLE,
+    MOST_CONSTRAINED_VARIABLE,
+    LEAST_CONSTRAINING_VALUE,
+)
 
 def armar_mapa(filas, columnas, cantidad_paredes, cantidad_cajas_objetivos):
-    
-    esquinas = [(
-        (0, 0), (0, columnas - 1), (filas - 1, 0), (filas - 1, columnas - 1),
-    )]
     
     # Definimos las variables
     #Las variables son las paredes, las cajas, los objetivos y el jugador. 
@@ -12,31 +16,80 @@ def armar_mapa(filas, columnas, cantidad_paredes, cantidad_cajas_objetivos):
     columnas = 4
     cantidad_paredes = 3
     cantidad_cajas_objetivos = 2
-    paredes = []
-    cajas = []
-    objetivos = []
-    jugador = [('jugador')]
-    
+
     #Definimos la cantidad de paredes, cajas y objetivos. 
-    for x in range(cantidad_paredes):
-        paredes.append('pared' + str(x))
-    
-    for x in range(cantidad_cajas_objetivos):
-        cajas.append('caja', + str(x))
-        objetivos.append('objetivo', + str(x))
-    
-    variables = [jugador + paredes + cajas + objetivos]
+    PAREDES = [f'pared_{i}' for i in range(cantidad_paredes)]
+    CAJAS = [f'caja_{i}' for i in range(cantidad_cajas_objetivos)]
+    OBJETIVOS = [f'objetivo_{i}' for i in range(cantidad_cajas_objetivos)]
+    JUGADOR = 'jugador'
+
+    CASILLAS = [(f,c) for f in range(filas) for c in range(columnas)]
+    ESQUINAS = [(0,0), (0, columnas -1), (filas - 1, 0), (filas - 1, columnas -1)]
+
+    problem_variables = PAREDES + CAJAS + OBJETIVOS + [JUGADOR]
     
     #Definimos los dominios
     #Los dominios son las posiciones del mapa (fila, columna) que se le pueden asignar a las variables(jugador, paredes, cajas, objetivos)
     
-    dominio = {}
-    for variable in variables:
-        for f in range(filas):
-            for c in range(columnas):
-                #Restringir el dominio de la variable cajas -> no se pueden ubicar en las esquinas. 
-                if (f,c) not in esquinas and variable in cajas:
-                    dominio[variable] = [(f,c)]
-                else:
-                    dominio[variable] = [(f,c)]
-                
+    domains = {}
+    for variable in problem_variables:
+        domains[variable] = CASILLAS
+
+    #Restringir el dominio de la variable cajas -> no se pueden ubicar en las esquinas. 
+    for casilla in CASILLAS:
+        if casilla not in ESQUINAS:
+            for caja in CAJAS:
+                domains[caja] = casilla
+
+    #Definimos las restricciones
+    constraints = []
+
+    #Funcion que retorna si dos posiciones son adyacentes. 
+    def adjacent(posiciones):
+        pos1, pos2 = posiciones
+        return (abs(pos1-pos2) + abs(pos1-pos2)) == 1
+
+    #Restriccion: no puede haber dos objetos fisicos (paredes, cajas y jugador) en la misma posicion. 
+    def dos_objetos_fisicos_misma_posicion(variables, values):
+        return len(values) == len(set(values))
+
+    for varable1, variable2 in combinations(problem_variables,2):
+        constraints.append(((varable1, variable2), dos_objetos_fisicos_misma_posicion))
+        
+    #Restriccion: los objetivos no pueden estar en la misma posicion que las paredes. 
+    def obj_no_en_paredes(variables, values):
+        objetivos, paredes = variables 
+
+        for obj in objetivos:
+            if obj in paredes:
+                return False
+        return True 
+
+    constraints.append(([OBJETIVOS] + PAREDES, obj_no_en_paredes))
+
+    #Restriccion: Todas las cajas no deben estar en posiciones objetivos. Algunas cajas comienzan sobre objetivos. 
+    def cajas_no_en_todos_obj(variables, values):
+        cajas, objetivos = variables
+        for caja in cajas:
+            if caja not in objetivos:
+                return True             #No todas las cajas estan en los objetivos
+        return False
+
+    constraints.append(([CAJAS] + OBJETIVOS, cajas_no_en_todos_obj))
+
+    #Restriccion: Las cajas no deben tener mas de una pared adyacente.
+    def caja_no_ady_pared(variables, values):
+        caja, *paredes = values
+        cantidad_paredes_adyacentes = 0
+        for pared in paredes:
+            if adjacent([caja, pared]):
+                cantidad_paredes_adyacentes += 1
+        return cantidad_paredes_adyacentes == 1
+    
+    constraints.append(([CAJAS] + PAREDES, caja_no_ady_pared))
+
+    #Restriccion: Las cajas en los bordes no deben tener ninguna pared adyacente. TODO
+
+
+    problem = CspProblem(problem_variables, domains, constraints)
+    result = backtrack(problem)
