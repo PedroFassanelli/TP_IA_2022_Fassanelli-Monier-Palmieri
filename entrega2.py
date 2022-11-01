@@ -24,7 +24,7 @@ def armar_mapa(filas, columnas, cantidad_paredes, cantidad_cajas_objetivos):
     ESQUINAS = [(0,0), (0, columnas -1), (filas - 1, 0), (filas - 1, columnas -1)]
 
     problem_variables = PAREDES + CAJAS + OBJETIVOS + [JUGADOR]
-    print(problem_variables)
+    #print(problem_variables)
     
     #Definimos los dominios
     #Los dominios son las posiciones del mapa (fila, columna) que se le pueden asignar a las variables(jugador, paredes, cajas, objetivos)
@@ -37,7 +37,7 @@ def armar_mapa(filas, columnas, cantidad_paredes, cantidad_cajas_objetivos):
     CASILLAS_SIN_ESQUINAS = [casilla for casilla in CASILLAS if casilla not in ESQUINAS]
     domains.update([(objeto, CASILLAS_SIN_ESQUINAS) for objeto in problem_variables if objeto in CAJAS])
 
-    print(domains)
+    #print(domains)
     #Definimos las restricciones
     constraints = []
 
@@ -45,6 +45,10 @@ def armar_mapa(filas, columnas, cantidad_paredes, cantidad_cajas_objetivos):
     def adjacent(posiciones):
         pos1, pos2 = posiciones
         return (abs(pos1-pos2) + abs(pos1-pos2)) == 1
+
+    #Funcion que retorna si una posicion esta en el borde del mapa. 
+    def en_borde(posicion):
+        return posicion[0] in (0, filas - 1) or posicion[1] in (0, columnas - 1)
 
     #Restriccion: no puede haber dos objetos fisicos (paredes, cajas y jugador) en la misma posicion. 
     def dos_objetos_fisicos_misma_posicion(variables, values):
@@ -61,7 +65,6 @@ def armar_mapa(filas, columnas, cantidad_paredes, cantidad_cajas_objetivos):
             if obj in paredes:
                 return False
         return True 
-
     constraints.append(([OBJETIVOS] + PAREDES, obj_no_en_paredes))
 
     #Restriccion: Todas las cajas no deben estar en posiciones objetivos. Algunas cajas comienzan sobre objetivos. 
@@ -71,27 +74,32 @@ def armar_mapa(filas, columnas, cantidad_paredes, cantidad_cajas_objetivos):
             if caja not in objetivos:
                 return True             #No todas las cajas estan en los objetivos
         return False
-
     constraints.append(([CAJAS] + OBJETIVOS, cajas_no_en_todos_obj))
 
     #Restriccion: Las cajas no deben tener mas de una pared adyacente.
+    #Restriccion: Las cajas en los bordes no deben tener ninguna pared adyacente. 
     def caja_no_ady_pared(variables, values):
-        caja, *paredes = values
+        cajas, *paredes = values
         cantidad_paredes_adyacentes = 0
-        for pared in paredes:
-            if adjacent([caja, pared]):
-                cantidad_paredes_adyacentes += 1
-        return cantidad_paredes_adyacentes == 1
-    
+        for caja in cajas:
+            for pared in paredes:
+                if adjacent([caja, pared]):
+                    cantidad_paredes_adyacentes += 1
+                    if en_borde(caja):
+                        return cantidad_paredes_adyacentes == 0
+                    else:
+                        return cantidad_paredes_adyacentes <= 1
     constraints.append(([CAJAS] + PAREDES, caja_no_ady_pared))
+    
+    problem = CspProblem(problem_variables, domains, constraints)
+    result = backtrack(problem)
+    return(result)
 
-    #Restriccion: Las cajas en los bordes no deben tener ninguna pared adyacente. TODO
-
-
-mapa_resultante = armar_mapa(
-  filas=5,
-  columnas=4,
-  cantidad_paredes=3,
-  cantidad_cajas_objetivos=2,
-)
-print(mapa_resultante)
+# if __name__ == '__main__':
+#     print('Trabajo Práctico Inteligencia Artificial')
+#     filas=5
+#     columnas=4
+#     cantidad_paredes=3
+#     cantidad_cajas_objetivos=2
+#     mapa = armar_mapa(filas, columnas, cantidad_paredes, cantidad_cajas_objetivos )
+#     print(mapa)
