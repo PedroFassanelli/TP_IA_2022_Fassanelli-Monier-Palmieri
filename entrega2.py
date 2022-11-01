@@ -8,14 +8,11 @@ from simpleai.search import (
     LEAST_CONSTRAINING_VALUE,
 )
 
+
 def armar_mapa(filas, columnas, cantidad_paredes, cantidad_cajas_objetivos):
     
     # Definimos las variables
     #Las variables son las paredes, las cajas, los objetivos y el jugador. 
-    filas = 3
-    columnas = 4
-    cantidad_paredes = 3
-    cantidad_cajas_objetivos = 2
 
     #Definimos la cantidad de paredes, cajas y objetivos. 
     PAREDES = [f'pared_{i}' for i in range(cantidad_paredes)]
@@ -27,6 +24,7 @@ def armar_mapa(filas, columnas, cantidad_paredes, cantidad_cajas_objetivos):
     ESQUINAS = [(0,0), (0, columnas -1), (filas - 1, 0), (filas - 1, columnas -1)]
 
     problem_variables = PAREDES + CAJAS + OBJETIVOS + [JUGADOR]
+    print(problem_variables)
     
     #Definimos los dominios
     #Los dominios son las posiciones del mapa (fila, columna) que se le pueden asignar a las variables(jugador, paredes, cajas, objetivos)
@@ -36,11 +34,10 @@ def armar_mapa(filas, columnas, cantidad_paredes, cantidad_cajas_objetivos):
         domains[variable] = CASILLAS
 
     #Restringir el dominio de la variable cajas -> no se pueden ubicar en las esquinas. 
-    for casilla in CASILLAS:
-        if casilla not in ESQUINAS:
-            for caja in CAJAS:
-                domains[caja] = casilla
+    CASILLAS_SIN_ESQUINAS = [casilla for casilla in CASILLAS if casilla not in ESQUINAS]
+    domains.update([(objeto, CASILLAS_SIN_ESQUINAS) for objeto in problem_variables if objeto in CAJAS])
 
+    print(domains)
     #Definimos las restricciones
     constraints = []
 
@@ -91,5 +88,10 @@ def armar_mapa(filas, columnas, cantidad_paredes, cantidad_cajas_objetivos):
     #Restriccion: Las cajas en los bordes no deben tener ninguna pared adyacente. TODO
 
 
-    problem = CspProblem(problem_variables, domains, constraints)
-    result = backtrack(problem)
+mapa_resultante = armar_mapa(
+  filas=5,
+  columnas=4,
+  cantidad_paredes=3,
+  cantidad_cajas_objetivos=2,
+)
+print(mapa_resultante)
