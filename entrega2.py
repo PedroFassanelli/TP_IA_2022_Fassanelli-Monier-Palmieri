@@ -44,7 +44,8 @@ def armar_mapa(filas, columnas, cantidad_paredes, cantidad_cajas_objetivos):
     #Funcion que retorna si dos posiciones son adyacentes. 
     def adjacent(posiciones):
         pos1, pos2 = posiciones
-        return (abs(pos1-pos2) + abs(pos1-pos2)) == 1
+        distancia = abs(pos1[0] - pos2[0]) + abs(pos1[1] - pos2[1])
+        return distancia == 1
 
     #Funcion que retorna si una posicion esta en el borde del mapa. 
     def en_borde(posicion):
@@ -59,47 +60,71 @@ def armar_mapa(filas, columnas, cantidad_paredes, cantidad_cajas_objetivos):
         
     #Restriccion: los objetivos no pueden estar en la misma posicion que las paredes. 
     def obj_no_en_paredes(variables, values):
-        objetivos, paredes = variables 
-
-        for obj in objetivos:
-            if obj in paredes:
+        objetivos, *paredes = variables 
+        for pared in paredes:
+            if pared in objetivos:
                 return False
         return True 
-    constraints.append(([OBJETIVOS] + PAREDES, obj_no_en_paredes))
+    constraints.append((tuple(OBJETIVOS + PAREDES), obj_no_en_paredes))
 
     #Restriccion: Todas las cajas no deben estar en posiciones objetivos. Algunas cajas comienzan sobre objetivos. 
     def cajas_no_en_todos_obj(variables, values):
-        cajas, objetivos = variables
+        cajas, *objetivos = variables
         for caja in cajas:
             if caja not in objetivos:
                 return True             #No todas las cajas estan en los objetivos
         return False
-    constraints.append(([CAJAS] + OBJETIVOS, cajas_no_en_todos_obj))
+    constraints.append((tuple(CAJAS + OBJETIVOS), cajas_no_en_todos_obj))
 
     #Restriccion: Las cajas no deben tener mas de una pared adyacente.
     #Restriccion: Las cajas en los bordes no deben tener ninguna pared adyacente. 
     def caja_no_ady_pared(variables, values):
-        cajas, *paredes = values
+        *cajas, paredes = values
         cantidad_paredes_adyacentes = 0
         for caja in cajas:
-            for pared in paredes:
-                if adjacent([caja, pared]):
-                    cantidad_paredes_adyacentes += 1
-                    if en_borde(caja):
-                        return cantidad_paredes_adyacentes == 0
-                    else:
-                        return cantidad_paredes_adyacentes <= 1
-    constraints.append(([CAJAS] + PAREDES, caja_no_ady_pared))
-    
-    problem = CspProblem(problem_variables, domains, constraints)
-    result = backtrack(problem)
-    return(result)
+            if adjacent([caja, paredes]):
+                cantidad_paredes_adyacentes += 1
+            return en_borde(caja) and cantidad_paredes_adyacentes == 0 or ((not en_borde(caja) and cantidad_paredes_adyacentes <=1))
+    constraints.append((tuple(CAJAS + PAREDES), caja_no_ady_pared))
 
-# if __name__ == '__main__':
-#     print('Trabajo Práctico Inteligencia Artificial')
-#     filas=5
-#     columnas=4
-#     cantidad_paredes=3
-#     cantidad_cajas_objetivos=2
-#     mapa = armar_mapa(filas, columnas, cantidad_paredes, cantidad_cajas_objetivos )
-#     print(mapa)
+    # def caja_no_ady_pared(variables, values):
+    #     cajas, *paredes = values
+    #     cantidad_paredes_adyacentes = 0
+    #     for caja in cajas:
+    #         for pared in paredes:
+    #             if adjacent([caja, pared]):
+    #                 cantidad_paredes_adyacentes += 1
+    #                 if en_borde(caja):
+    #                     return cantidad_paredes_adyacentes == 0
+    #                 else:
+    #                     return cantidad_paredes_adyacentes <= 1
+    # constraints.append(([CAJAS] + PAREDES, caja_no_ady_pared))
+    
+    #Codigo para ejecutar la solucion
+    
+    problema = CspProblem(problem_variables, domains, constraints)
+
+    solucion = backtrack(
+        problema,
+        inference=False,
+        variable_heuristic=MOST_CONSTRAINED_VARIABLE,
+        value_heuristic=LEAST_CONSTRAINING_VALUE,
+    )
+
+    lista_paredes = []
+    lista_cajas = []
+    lista_objetivos = []
+    jugador = solucion['jugador']
+
+    for pared in PAREDES:
+        lista_paredes.append(solucion[pared])
+
+    lista_cajas = []
+    for caja in CAJAS:
+        lista_cajas.append(solucion[caja])
+
+    lista_objetivos = []
+    for objetivo in OBJETIVOS:
+        lista_objetivos.append(solucion[objetivo])
+
+    return (lista_paredes, lista_cajas, lista_objetivos, jugador)
