@@ -2,7 +2,18 @@ from simpleai.search import SearchProblem, astar, breadth_first, depth_first
 from simpleai.search.viewers import WebViewer, BaseViewer
 
 def jugar(paredes, cajas, objetivos, jugador, maximos_movimientos):
+
+    def listas(tuplas):
+        return [list(x) for x in tuplas]
+
+    def tuplas(listas):
+        return tuple([tuple(x) for x in listas])
     
+    PAREDES = tuplas(paredes)
+    OBJETIVOS = tuplas(objetivos)
+    CAJAS = tuplas(cajas)
+
+
     '''
     A partir de las coordenadas de paredes, cajas, objetivos, jugador y cantidad maxima de movimientos recibidos
     como parametros, se arma el estado, ese estado se pasa al problema que retorna el resultado. 
@@ -13,8 +24,10 @@ def jugar(paredes, cajas, objetivos, jugador, maximos_movimientos):
     # - posicion del jugador
     # - cantidad maxima de movimientos realizados
     
-    estado_inicial = (tuple(cajas), jugador, maximos_movimientos)
-    print(estado_inicial)
+    ESTADO_INICIAL = (
+        CAJAS, jugador, maximos_movimientos
+    )
+    #print(ESTADO_INICIAL)
     
     #(
     # ((0, 3), (2, 4)),  #Cajas 
@@ -31,9 +44,10 @@ def jugar(paredes, cajas, objetivos, jugador, maximos_movimientos):
     class SokobanProblem(SearchProblem):
         def is_goal(self, state):
             cajas, jugador, movimientos = state
+            lista_cajas = listas(cajas)
             #Si todas las cajas estan en las posiciones objetivo. 
-            for caja in cajas:
-                if caja not in objetivos:
+            for caja in lista_cajas:
+                if caja not in OBJETIVOS:
                     return False
             return True
             
@@ -46,6 +60,7 @@ def jugar(paredes, cajas, objetivos, jugador, maximos_movimientos):
             # -Si en la casilla adyacente al jugador hay una caja, el jugador puede empujar la caja a una posicion adyacente que no tenga otra caja. 
             acciones_disponibles = []
             cajas, jugador, movimientos = state
+            lista_cajas = listas(cajas)
             f_jugador, c_jugador = jugador
 
             if movimientos > 0:
@@ -54,13 +69,13 @@ def jugar(paredes, cajas, objetivos, jugador, maximos_movimientos):
                     jugador_nueva_columna = c_jugador + c
                     jugador_nueva_posicion = (jugador_nueva_fila, jugador_nueva_columna)
                         
-                    if jugador_nueva_posicion not in paredes:
+                    if jugador_nueva_posicion not in PAREDES:
                         #Muevo si no hay pared, y la caja adyacente puede moverse.
-                        if jugador_nueva_posicion in cajas:
+                        if jugador_nueva_posicion in lista_cajas:
                             caja_nueva_fila = jugador_nueva_fila + f
                             caja_nueva_columna = jugador_nueva_columna + c
                             caja_nueva_posicion = (caja_nueva_fila, caja_nueva_columna)
-                            if caja_nueva_posicion not in paredes and caja_nueva_posicion not in cajas:                       
+                            if caja_nueva_posicion not in PAREDES and caja_nueva_posicion not in lista_cajas:                       
                                 acciones_disponibles.append((('Empujar', nombre), jugador_nueva_posicion, caja_nueva_posicion))   #El jugador se mueve con la caja.
                         else:
                             acciones_disponibles.append((('Mover', nombre), jugador_nueva_posicion))    #No hay ni pared, ni caja adyacente, muevo al jugador. 
@@ -69,7 +84,7 @@ def jugar(paredes, cajas, objetivos, jugador, maximos_movimientos):
         def result(self, state, action):
             cajas, jugador, movimientos = state
             #Identificamos hacia donde se mueve
-                
+            lista_cajas = listas(cajas)
             '''             
             direccion = ''
             if (jugador[0] - nueva_pos_jugador[0]) == 1:
@@ -88,7 +103,7 @@ def jugar(paredes, cajas, objetivos, jugador, maximos_movimientos):
                 nueva_pos_caja = action[2]
                 #actualizando lista de cajas
                 cajas_mod = []
-                for caja in cajas:
+                for caja in lista_cajas:
                     if caja == nueva_pos_jugador:
                         cajas_mod.append(nueva_pos_caja)
                     else:
@@ -103,21 +118,26 @@ def jugar(paredes, cajas, objetivos, jugador, maximos_movimientos):
                 jugador = nueva_pos_jugador
                 cajas_mod = cajas
 
-            return (cajas_mod, jugador, movimientos)
+            return (tuplas(cajas_mod), jugador, movimientos)
 
         def heuristic(self, state):
             #Cantidad de cajas mal ubicadas (por lo menos 1 movimiento por cada caja mal ubicada)
             cajas_mal = 0
             cajas, jugador, movimientos = state
-            for caja in cajas:
-                if caja not in objetivos:
+            lista_cajas = listas(cajas)
+            for caja in lista_cajas:
+                if caja not in OBJETIVOS:
                     cajas_mal += 1
             
             return cajas_mal
 
-    secuencia = []
-    problema = SokobanProblem(estado_inicial)
+    problema = SokobanProblem(ESTADO_INICIAL)
     solucion = astar(problema)
+
+    secuencia = []
+    if (not solucion):
+        return ([])
+        
 
     for action, state in solucion.path():
         if (action is not None):
