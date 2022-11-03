@@ -66,6 +66,9 @@ def armar_mapa(filas, columnas, cantidad_paredes, cantidad_cajas_objetivos):
                 return False
         return True 
     constraints.append((tuple(OBJETIVOS + PAREDES), obj_no_en_paredes))
+    
+    #ValueError: too many values to unpack (expected 2) -> no se puede desempaquetar una lista de 1 elemento. 
+    # Agregamos un * para que se desempaquete como una lista de 1 elemento.
 
     #Restriccion: Todas las cajas no deben estar en posiciones objetivos. Algunas cajas comienzan sobre objetivos. 
     def cajas_no_en_todos_obj(variables, values):
@@ -75,31 +78,50 @@ def armar_mapa(filas, columnas, cantidad_paredes, cantidad_cajas_objetivos):
                 return True             #No todas las cajas estan en los objetivos
         return False
     constraints.append((tuple(CAJAS + OBJETIVOS), cajas_no_en_todos_obj))
+    
+    
+    #Funcion que devuelve las posiciones adyacentes a una posicion.
+    def posiciones_adyacentes(fila_caja, columna_caja):
+        adyacentes = []
+        if fila_caja > 0:
+            adyacentes.append((fila_caja-1, columna_caja))
+        if fila_caja < filas - 1:
+            adyacentes.append((fila_caja+1, columna_caja))
+        if columna_caja > 0:
+            adyacentes.append((fila_caja, columna_caja-1))
+        if columna_caja < columnas - 1:
+            adyacentes.append((fila_caja, columna_caja+1))
+        return adyacentes
 
+    #Funcion para comprobar si una posicion esta en el borde del mapa. 
+    def es_borde(fila, columna):
+        return fila in (0, filas - 1) or columna in (0, columnas - 1)
+    
     #Restriccion: Las cajas no deben tener mas de una pared adyacente.
     #Restriccion: Las cajas en los bordes no deben tener ninguna pared adyacente. 
-    def caja_no_ady_pared(variables, values):
-        *cajas, paredes = values
-        cantidad_paredes_adyacentes = 0
-        for caja in cajas:
-            if adjacent([caja, paredes]):
-                cantidad_paredes_adyacentes += 1
-            return en_borde(caja) and cantidad_paredes_adyacentes == 0 or ((not en_borde(caja) and cantidad_paredes_adyacentes <=1))
-    constraints.append((tuple(CAJAS + PAREDES), caja_no_ady_pared))
-
-    # def caja_no_ady_pared(variables, values):
-    #     cajas, *paredes = values
-    #     cantidad_paredes_adyacentes = 0
-    #     for caja in cajas:
-    #         for pared in paredes:
-    #             if adjacent([caja, pared]):
-    #                 cantidad_paredes_adyacentes += 1
-    #                 if en_borde(caja):
-    #                     return cantidad_paredes_adyacentes == 0
-    #                 else:
-    #                     return cantidad_paredes_adyacentes <= 1
-    # constraints.append(([CAJAS] + PAREDES, caja_no_ady_pared))
-    
+    def cantidad_paredes_adyacentes_caja(variables, values):
+        fila_c, columna_c = values[0]
+        
+        adyacentes = []
+        cantidad_paredes = 0
+        adyacentes = posiciones_adyacentes(fila_c, columna_c)
+        for pared in values:
+            if pared in adyacentes:
+                cantidad_paredes +=1
+        if es_borde(fila_c, columna_c):            #Si la caja esta en el borde, no puede tener paredes adyacentes.
+            return cantidad_paredes == 0
+        else:
+            return cantidad_paredes <= 1                 #Si la caja no esta en el borde, puede tener hasta una pared adyacente.
+        
+    #constraints.append((tuple(CAJAS + PAREDES), cantidad_paredes_adyacentes_caja))  #Tarda mucho en ejecutar los tests
+    #Probamos con restriccion binaria y preguntamos si las paredes son mas de una o no para pasar el test. 
+    if len(PAREDES) > 1:
+        for pared1, pared2 in combinations(PAREDES, 2):
+            for caja in CAJAS:
+                constraints.append(((caja, pared1, pared2), cantidad_paredes_adyacentes_caja))
+    else:
+        constraints.append((tuple(CAJAS + PAREDES), cantidad_paredes_adyacentes_caja))
+                
     #Codigo para ejecutar la solucion
     
     problema = CspProblem(problem_variables, domains, constraints)
