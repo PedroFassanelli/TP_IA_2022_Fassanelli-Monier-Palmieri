@@ -41,20 +41,12 @@ def armar_mapa(filas, columnas, cantidad_paredes, cantidad_cajas_objetivos):
     #Definimos las restricciones
     constraints = []
 
-    #Funcion que retorna si dos posiciones son adyacentes. 
-    def adjacent(posiciones):
-        pos1, pos2 = posiciones
-        distancia = abs(pos1[0] - pos2[0]) + abs(pos1[1] - pos2[1])
-        return distancia == 1
-
-    #Funcion que retorna si una posicion esta en el borde del mapa. 
-    def en_borde(posicion):
-        return posicion[0] in (0, filas - 1) or posicion[1] in (0, columnas - 1)
-
     #Restriccion: no puede haber dos objetos fisicos (paredes, cajas y jugador) en la misma posicion. 
     def dos_objetos_fisicos_misma_posicion(variables, values):
-        return len(values) == len(set(values))
-
+        #return len(values) == len(set(values))
+        values1, values2 = values
+        return values1 != values2
+    
     for varable1, variable2 in combinations(problem_variables,2):
         constraints.append(((varable1, variable2), dos_objetos_fisicos_misma_posicion))
         
