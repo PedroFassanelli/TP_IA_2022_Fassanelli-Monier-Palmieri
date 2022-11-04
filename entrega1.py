@@ -110,15 +110,14 @@ def jugar(paredes, cajas, objetivos, jugador, maximos_movimientos):
             
             return cajas_mal
 
-    problema = SokobanProblem(ESTADO_INICIAL)
-    solucion = astar(problema)
+    result = astar(SokobanProblem(ESTADO_INICIAL),graph_search=True)
 
     secuencia = []
-    if (not solucion):
+    if (not result):
         return ([])
         
 
-    for action, state in solucion.path():
+    for action, state in result.path():
         if (action is not None):
             secuencia.append(action[1])
     
